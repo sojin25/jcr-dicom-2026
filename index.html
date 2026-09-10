@@ -32,6 +32,7 @@
   #searchBar input{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:6px;
     color:var(--text);padding:6px 10px;font-size:13px;outline:none}
   #searchBar input:focus{border-color:var(--accent)}
+  #searchBar input::placeholder{color:#6f7a88;opacity:1}  /* 例示文は控えめなグレーに（スマホで目立ちすぎないように） */
   #tagCount{color:var(--dim);font-size:12px;white-space:nowrap}
   #tableWrap{flex:1;overflow:auto}
   table{border-collapse:collapse;width:100%;font-size:12.5px}
@@ -145,6 +146,7 @@
     #headerPane{display:block;border-right:none}
     #searchBar{padding:8px 10px}
     #searchBar input{font-size:16px}  /* iOS の自動ズーム防止 */
+    #searchBar input::placeholder{color:#5e6874;font-size:14px}
     #legend{font-size:11px;gap:6px 10px;padding:6px 10px}
     #tableWrap{overflow:visible}
     table{font-size:12px}
