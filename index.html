@@ -22,6 +22,9 @@
     padding:3px 10px;font-size:12px;text-decoration:none;white-space:nowrap}
   #saveBtn:hover{background:rgba(77,163,255,.12)}
   header .note b{color:var(--warn);font-weight:600}
+  #pubUrl{color:var(--dim);font-size:12px;text-decoration:none;white-space:nowrap;margin-left:auto}
+  #pubUrl code{color:var(--accent);font-family:ui-monospace,Menlo,monospace}
+  #pubUrl:hover code{text-decoration:underline}
   main{flex:1;display:flex;min-height:0}
   /* 左：ヘッダ一覧 */
   #headerPane{flex:1.2;min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--line)}
@@ -127,6 +130,7 @@
   <h1>DICOMヘッダビューア</h1>
   <a id="saveBtn" hidden download="dicom_viewer.html">💾 このページを保存</a>
   <span class="note"><b>このページはインターネットと接続しないで使えます。</b>（読み込んだファイルはどこにも送信されません）／画面に別の .dcm をドラッグ＆ドロップすると読み替えます</span>
+  <a id="pubUrl" href="https://sojin25.github.io/jcr-dicom-2026/" target="_blank" rel="noopener">公開URL <code>sojin25.github.io/jcr-dicom-2026</code></a>
 </header>
 <main>
   <section id="headerPane">
