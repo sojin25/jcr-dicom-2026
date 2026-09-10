@@ -101,6 +101,7 @@
   #filterRow button.active{border-color:#ffab40;color:#ffab40;background:rgba(255,171,64,.12)}
   .rowLabel{color:var(--dim);font-size:12.5px;margin-right:2px}
   #kernelBox{display:flex;align-items:center;gap:14px}
+  #kernelBox[hidden]{display:none}  /* display:flex が hidden 属性に勝ってしまうのを防ぐ */
   #kernelGrid{display:grid;grid-template-columns:repeat(3,72px);gap:4px}
   #kernelGrid input{background:var(--panel2);border:1px solid var(--line);border-radius:5px;
     color:var(--text);font:12px ui-monospace,Menlo,monospace;padding:4px 6px;text-align:center;width:100%;box-sizing:border-box}
@@ -118,18 +119,59 @@
   body.dragover::after{content:"DICOMファイルをドロップして読み込み";position:fixed;inset:0;
     display:flex;align-items:center;justify-content:center;font-size:22px;
     background:rgba(20,30,45,.85);border:3px dashed var(--accent);z-index:10}
-  @media (max-width:820px){
-    main{flex-direction:column-reverse}
-    #headerPane{border-right:none;border-top:1px solid var(--line)}
-    #imagePane{flex:none}
+  #openBtn{color:var(--accent);border:1px solid var(--accent);border-radius:6px;
+    padding:3px 10px;font-size:12px;cursor:pointer;white-space:nowrap;background:none;font-family:inherit}
+  #openBtn:hover{background:rgba(77,163,255,.12)}
+  #fileIn{display:none}
+  .onlyMobile{display:none}
+  /* ---- スマートフォン／狭い画面：縦積み・ページ全体スクロール ---- */
+  @media (max-width:900px){
+    html,body{height:auto;min-height:100%}
+    body{display:block;font-size:13px}
+    header{padding:8px 12px;gap:8px;align-items:center}
+    header h1{font-size:15px;flex:1 1 auto}
+    header .note{flex-basis:100%;order:10;font-size:11.5px;line-height:1.5}
+    .noteMore{display:none}
+    #pubUrl{margin-left:0;order:11;flex-basis:100%;font-size:11.5px}
+    main{display:flex;flex-direction:column}
+    #imagePane{order:-1;overflow:visible;padding:10px;gap:10px;border-bottom:1px solid var(--line)}  /* 画像を先頭に */
+    #canvasWrap{max-width:100%}
+    #controls{max-width:100%;padding:10px 12px}
+    #wlbar{margin:6px 14px 44px}
+    #presets button,#filterRow button{padding:7px 12px;font-size:13px}
+    #kernelBox{flex-direction:column;align-items:stretch;gap:8px}
+    #kernelGrid{grid-template-columns:repeat(3,1fr)}
+    .kernelHint{max-width:none}
+    #headerPane{display:block;border-right:none}
+    #searchBar{padding:8px 10px}
+    #searchBar input{font-size:16px}  /* iOS の自動ズーム防止 */
+    #legend{font-size:11px;gap:6px 10px;padding:6px 10px}
+    #tableWrap{overflow:visible}
+    table{font-size:12px}
+    thead th{top:0}
+    th:nth-child(2),td.vr{display:none}
+    td{padding:5px 8px}
+    td.name{white-space:normal;max-width:none;min-width:7em}
+    td.val{font-size:11.5px}
+    .depth1{padding-left:18px!important}
+    .depth2{padding-left:28px!important}
+    .depth3{padding-left:38px!important}
+    #tip{max-width:calc(100vw - 16px)}
+    .onlyDesktop{display:none}
+    .onlyMobile{display:inline}
+  }
+  @media (hover:none){
+    tr.hasTip td.name{cursor:default}
   }
 </style>
 </head>
 <body>
 <header>
   <h1>DICOMヘッダビューア</h1>
+  <button id="openBtn" type="button" title="手元の DICOM ファイルを読み込む">📂 DICOMを開く</button>
+  <input id="fileIn" type="file" accept=".dcm,application/dicom,*/*">
   <a id="saveBtn" hidden download="dicom_viewer.html">💾 このページを保存</a>
-  <span class="note"><b>このページはインターネットと接続しないで使えます。</b>（読み込んだファイルはどこにも送信されません）／画面に別の .dcm をドラッグ＆ドロップすると読み替えます</span>
+  <span class="note"><b>このページはインターネットと接続しないで使えます。</b>（読み込んだファイルはどこにも送信されません）<span class="noteMore">／画面に別の .dcm をドラッグ＆ドロップするか「📂 DICOMを開く」で読み替えます</span></span>
   <a id="pubUrl" href="https://sojin25.github.io/jcr-dicom-2026/" target="_blank" rel="noopener">公開URL <code>sojin25.github.io/jcr-dicom-2026</code></a>
 </header>
 <main>
@@ -200,7 +242,7 @@
       </div>
     </div>
     <div id="msg"></div>
-    <div id="dropHint">画像上にマウスを乗せると座標とCT値（HU）を表示します</div>
+    <div id="dropHint"><span class="onlyDesktop">画像上にマウスを乗せると座標とCT値（HU）を表示します</span><span class="onlyMobile">画像をタップすると座標とCT値（HU）を表示します。行をタップすると日本語の解説が出ます</span></div>
   </section>
 </main>
 
@@ -616,6 +658,25 @@ tbody.addEventListener("mousemove", e => {
 });
 tbody.addEventListener("mouseleave", () => { tip.style.display = "none"; });
 document.getElementById("tableWrap").addEventListener("scroll", () => { tip.style.display = "none"; });
+window.addEventListener("scroll", () => { tip.style.display = "none"; }, { passive: true });
+/* タッチ端末：行をタップで解説を表示（同じ行の再タップ・表の外のタップで閉じる） */
+let tipRow = null;
+tbody.addEventListener("click", e => {
+  if (matchMedia("(hover:hover)").matches) return;   // マウス環境は mousemove に任せる
+  const tr = e.target.closest("tr");
+  const d = tr && tr.dataset.key ? JPDESC[tr.dataset.key] : null;
+  if (!d || tr === tipRow){ tip.style.display = "none"; tipRow = null; return; }
+  tipRow = tr;
+  tip.innerHTML = `<b>${d[0]}</b><br>${d[1]}`;
+  tip.style.display = "block";
+  const rr = tr.getBoundingClientRect(), r = tip.getBoundingClientRect();
+  let y = rr.bottom + 6;
+  if (y + r.height > innerHeight - 8) y = Math.max(8, rr.top - r.height - 6);
+  tip.style.left = "8px"; tip.style.top = y + "px";
+});
+document.addEventListener("click", e => {
+  if (tipRow && !e.target.closest("#tbody")){ tip.style.display = "none"; tipRow = null; }
+});
 
 /* ================= 画像描画 ================= */
 const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
@@ -836,7 +897,7 @@ function wlDragEnd(){
 wlwin.addEventListener("pointerdown", startWlDrag("move"));
 wlhL.addEventListener("pointerdown", startWlDrag("lower"));
 wlhR.addEventListener("pointerdown", startWlDrag("upper"));
-cv.addEventListener("mousemove", e => {
+const showHud = e => {
   if (!img) return;
   const r = cv.getBoundingClientRect();
   const x = Math.floor((e.clientX - r.left) / r.width * img.cols);
@@ -844,7 +905,9 @@ cv.addEventListener("mousemove", e => {
   if (x < 0 || y < 0 || x >= img.cols || y >= img.rows){ hud.textContent = ""; return; }
   const v = displayArray()[y*img.cols + x];
   hud.textContent = `(${x}, ${y})  ${Math.round(v)} ${currentFilterName === "none" ? "HU" : "HU（フィルタ後）"}`;
-});
+};
+cv.addEventListener("pointermove", showHud);
+cv.addEventListener("pointerdown", showHud);
 cv.addEventListener("mouseleave", () => hud.textContent = "");
 
 /* ================= 読み込み ================= */
@@ -876,6 +939,18 @@ document.body.addEventListener("drop", e => {
   if (!f) return;
   f.arrayBuffer().then(buf => loadBuffer(buf, f.name));
 });
+
+/* ファイル選択ボタン（スマホ・タブレットなどドラッグ＆ドロップが使えない端末向け） */
+(function(){
+  const inp = document.getElementById("fileIn");
+  document.getElementById("openBtn").addEventListener("click", () => inp.click());
+  inp.addEventListener("change", () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    f.arrayBuffer().then(buf => loadBuffer(buf, f.name));
+    inp.value = "";
+  });
+})();
 
 /* 保存ボタン: Webサーバから開かれている場合のみ表示（ローカルファイルでは不要） */
 (function(){
